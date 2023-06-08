@@ -1,5 +1,5 @@
-subroutine CalcIrrigationNeeded(this, bounds, num_exposedvegp, filter_exposedvegp, &
-       time_prev, elai, t_soisno, eff_porosity, h2osoi_liq, volr, rof_prognostic)
+  subroutine CalcIrrigationNeeded(this, bounds, num_exposedvegp, filter_exposedvegp, &
+       elai, t_soisno, eff_porosity, h2osoi_liq, volr, rof_prognostic)
     !
     ! !DESCRIPTION:
     ! Calculate whether and how much irrigation is needed for each column. However, this
@@ -11,9 +11,6 @@ subroutine CalcIrrigationNeeded(this, bounds, num_exposedvegp, filter_exposedveg
     ! !ARGUMENTS:
     class(irrigation_type) , intent(inout) :: this
     type(bounds_type)      , intent(in)    :: bounds
-
-    ! time of day (in seconds since 0Z) at start of timestep
-    integer, intent(in) :: time_prev
 
     ! number of points in filter_exposedvegp
     integer, intent(in) :: num_exposedvegp
@@ -93,11 +90,11 @@ subroutine CalcIrrigationNeeded(this, bounds, num_exposedvegp, filter_exposedveg
     !-----------------------------------------------------------------------
     
     ! Enforce expected array sizes
-    SHR_ASSERT_ALL((ubound(elai) == (/bounds%endp/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(t_soisno) == (/bounds%endc, nlevgrnd/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(eff_porosity) == (/bounds%endc, nlevgrnd/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(h2osoi_liq) == (/bounds%endc, nlevgrnd/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(volr) == (/bounds%endg/)), errMsg(sourcefile, __LINE__))
+    SHR_ASSERT_ALL_FL((ubound(elai) == (/bounds%endp/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(t_soisno) == (/bounds%endc, nlevgrnd/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(eff_porosity) == (/bounds%endc, nlevgrnd/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(h2osoi_liq) == (/bounds%endc, nlevgrnd/)), sourcefile, __LINE__)
+    SHR_ASSERT_ALL_FL((ubound(volr) == (/bounds%endg/)), sourcefile, __LINE__)
 
 
     ! Determine if irrigation is needed (over irrigated soil columns)
@@ -111,7 +108,7 @@ subroutine CalcIrrigationNeeded(this, bounds, num_exposedvegp, filter_exposedveg
 
        check_for_irrig_patch(p) = this%PointNeedsCheckForIrrig( &
             pft_type=patch%itype(p), elai=elai(p), &
-            time_prev=time_prev, londeg=grc%londeg(g))
+            londeg=grc%londeg(g))
        if (check_for_irrig_patch(p)) then
           c = patch%column(p)
           check_for_irrig_col(c) = .true.
@@ -184,7 +181,7 @@ subroutine CalcIrrigationNeeded(this, bounds, num_exposedvegp, filter_exposedveg
              write(iulog,*) subname//' ERROR: deficit < 0'
              write(iulog,*) 'This implies that irrigation target is less than irrigatio&
                   &n threshold, which should never happen'
-             call endrun(decomp_index=c, clmlevel=namec, msg='deficit < 0 '// &
+             call endrun(subgrid_index=c, subgrid_level=subgrid_level_column, msg='deficit < 0 '// &
                   errMsg(sourcefile, __LINE__))
           end if
        else
@@ -218,8 +215,9 @@ subroutine CalcIrrigationNeeded(this, bounds, num_exposedvegp, filter_exposedveg
        c = patch%column(p)
 
        if (check_for_irrig_patch(p)) then
+
           ! Convert units from mm to mm/sec
-          this%irrig_rate_patch(p) = deficit_volr_limited(c) / &
+          this%sfc_irrig_rate_patch(p) = deficit_volr_limited(c) / &
                (this%dtime*this%irrig_nsteps_per_day)
           this%irrig_rate_demand_patch(p) = deficit(c) / &
                (this%dtime*this%irrig_nsteps_per_day)
